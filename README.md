@@ -25,13 +25,15 @@ are never shared and never leave your Mac.
 1. Go to <https://developer.schwab.com> and sign in with your Schwab credentials.
 2. Click **Create App**.
 3. Fill in:
+   - **Select an API Product** - `Accounts and Trading Production`
+   - **Order Limit** - `0` (force read-only)
    - **App Name** — e.g. `StockTape`
    - **Description** — anything
    - **App Type** — **Personal Use**
-4. Set the **Callback URL** to `https://127.0.0.1` **exactly** — HTTPS, no port
+5. Set the **Callback URL** to `https://127.0.0.1` **exactly** — HTTPS, no port
    suffix, no trailing slash.
-5. Submit. Approval is usually instant for personal-use apps.
-6. Copy your **App Key** (this is your *Client ID*) and your **Secret**.
+6. Submit. Approval is usually instant for personal-use apps.
+7. Copy your **App Key** (this is your *Client ID*) and your **Secret**.
 
 ## Installation
 
