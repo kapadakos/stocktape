@@ -38,7 +38,7 @@ are never shared and never leave your Mac.
 ```bash
 git clone https://github.com/{user}/stocktape.git
 cd stocktape/StockTape
-open StockTape.xcodeproj
+open -a Xcode StockTape.xcodeproj
 ```
 
 Then either:
