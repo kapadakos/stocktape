@@ -1,0 +1,41 @@
+# ─── Credentials — never commit these ───────────────────────────────
+# StockTape uses bring-your-own-credentials; nothing secret belongs in git.
+*.xcconfig
+.env
+.env.*
+*.pem
+*.p12
+secrets.*
+
+# ─── macOS ──────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ─── Xcode ──────────────────────────────────────────────────────────
+## User-specific
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+## Build products
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Swift Package Manager (unused, but ignore if ever added)
+.build/
+.swiftpm/
+
+## Other
+*.swp
+*~.nib
+*.xccheckout
+*.xcscmblueprint
+timeline.xctimeline
+playground.xcworkspace
