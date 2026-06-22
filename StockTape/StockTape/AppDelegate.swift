@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastUpdate: Date?
     private var isRefreshing = false
     private var hasLoadedOnce = false
+    private var hasWarnedRefreshTokenExpiry = false
 
     private var refreshTimer: Timer?
 
@@ -161,6 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.marquee.setPositions(positions)
                 }
                 Logger.shared.info("Refresh succeeded: \(positions.count) position(s).")
+                self.checkRefreshTokenExpiry()
             case .failure(let error):
                 self.handleRefreshFailure(error)
             }
@@ -179,6 +181,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             state = .networkError
             marquee.showStatus("⚠ Network error", color: .systemOrange)
+        }
+    }
+
+    // MARK: - Proactive re-auth warning
+
+    private func checkRefreshTokenExpiry() {
+        guard !hasWarnedRefreshTokenExpiry, auth.isRefreshTokenExpiringSoon else { return }
+        hasWarnedRefreshTokenExpiry = true
+
+        let expiresAt = auth.refreshTokenExpiresAt
+        let timeDesc: String
+        if let expiresAt {
+            let hours = max(0, Int(expiresAt.timeIntervalSinceNow / 3600))
+            timeDesc = hours > 0 ? "in about \(hours) hour\(hours == 1 ? "" : "s")" : "very soon"
+        } else {
+            timeDesc = "soon"
+        }
+
+        Logger.shared.warn("Refresh token expiring \(timeDesc) — prompting user to re-authenticate.")
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "StockTape — Re-authentication needed"
+        alert.informativeText = """
+        Your Schwab session will expire \(timeDesc). Re-authenticate now to avoid \
+        an interruption to your live ticker.
+
+        This takes about 30 seconds.
+        """
+        alert.addButton(withTitle: "Re-authenticate Now")
+        alert.addButton(withTitle: "Later")
+        alert.window.level = .floating
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            auth.clearTokens()
+            auth.beginAuthorization()
         }
     }
 

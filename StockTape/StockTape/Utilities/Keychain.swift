@@ -19,7 +19,8 @@ enum Keychain {
         case clientSecret = "schwab_client_secret"
         case accessToken = "schwab_access_token"
         case refreshToken = "schwab_refresh_token"
-        case tokenExpiry = "schwab_token_expiry"   // ISO8601 string
+        case tokenExpiry = "schwab_token_expiry"              // ISO8601 string
+        case refreshTokenExpiry = "schwab_refresh_token_expiry" // ISO8601 string
     }
 
     // MARK: - Read / write / delete
@@ -64,7 +65,7 @@ enum Keychain {
 
     /// Wipe every StockTape item from the keychain.
     static func deleteAll() {
-        [Key.clientID, .clientSecret, .accessToken, .refreshToken, .tokenExpiry]
+        [Key.clientID, .clientSecret, .accessToken, .refreshToken, .tokenExpiry, .refreshTokenExpiry]
             .forEach { delete($0) }
     }
 
