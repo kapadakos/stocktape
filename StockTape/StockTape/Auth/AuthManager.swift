@@ -356,8 +356,27 @@ final class AuthManager {
     private func store(_ tokens: TokenResponse) {
         Keychain.set(tokens.accessToken, for: .accessToken)
         Keychain.set(tokens.refreshToken, for: .refreshToken)
-        let expiry = Date().addingTimeInterval(TimeInterval(tokens.expiresIn))
-        Keychain.set(isoFormatter.string(from: expiry), for: .tokenExpiry)
+
+        let accessExpiry = Date().addingTimeInterval(TimeInterval(tokens.expiresIn))
+        Keychain.set(isoFormatter.string(from: accessExpiry), for: .tokenExpiry)
+
+        // Schwab returns `refresh_token_expires_in` when available; default to 7 days.
+        let refreshLifetime = TimeInterval(tokens.refreshTokenExpiresIn ?? 7 * 24 * 3600)
+        let refreshExpiry = Date().addingTimeInterval(refreshLifetime)
+        Keychain.set(isoFormatter.string(from: refreshExpiry), for: .refreshTokenExpiry)
+    }
+
+    /// True when the refresh token will expire within the next 24 hours.
+    var isRefreshTokenExpiringSoon: Bool {
+        guard let expiryString = Keychain.get(.refreshTokenExpiry),
+              let expiry = isoFormatter.date(from: expiryString) else { return false }
+        return expiry < Date().addingTimeInterval(24 * 3600)
+    }
+
+    /// Approximate time until the refresh token expires, or nil if unknown.
+    var refreshTokenExpiresAt: Date? {
+        guard let expiryString = Keychain.get(.refreshTokenExpiry) else { return nil }
+        return isoFormatter.date(from: expiryString)
     }
 
     // MARK: - Helpers
@@ -383,11 +402,13 @@ final class AuthManager {
         let accessToken: String
         let refreshToken: String
         let expiresIn: Int
+        let refreshTokenExpiresIn: Int?
 
         enum CodingKeys: String, CodingKey {
             case accessToken = "access_token"
             case refreshToken = "refresh_token"
             case expiresIn = "expires_in"
+            case refreshTokenExpiresIn = "refresh_token_expires_in"
         }
     }
 }

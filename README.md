@@ -38,18 +38,22 @@ are never shared and never leave your Mac.
 ```bash
 git clone https://github.com/{user}/stocktape.git
 cd stocktape/StockTape
-open StockTape.xcodeproj
+open -a Xcode StockTape.xcodeproj
 ```
 
-Then either:
+> **Tip:** If the project opens as a plain folder in Finder instead of Xcode,
+> right-click `StockTape.xcodeproj` in Finder → **Open With → Xcode**.
 
-- **Run it:** press **Cmd+R** in Xcode, or
-- **Install it:** Product → Archive → Distribute App → Copy App, then move
-  `StockTape.app` to `/Applications`.
+Then:
 
-> The first time you run StockTape from Xcode it is signed "to run locally."
-> If you move the app to another Mac, you'll need to build it there too (or
-> sign it with your own Developer ID), because it is not notarized.
+1. Press **Cmd+R** to build and run. StockTape will appear in your menu bar.
+2. Once you've confirmed it works, install it so you don't need Xcode open:
+   - In Xcode: **Product → Show Build Folder in Finder**
+   - Open the `Debug/` folder and drag **`StockTape.app`** to `/Applications`
+   - Launch it from `/Applications` — it runs independently of Xcode from now on
+
+> The app is signed "to run locally." If you move it to another Mac, build it
+> there too (or sign it with your own Developer ID), because it is not notarized.
 
 ## First Launch
 
@@ -79,11 +83,17 @@ it. This uses the modern `SMAppService` API (macOS 13+).
 
 ## Re-authentication
 
-- Schwab **access tokens** expire after 30 minutes; StockTape refreshes them
-  silently in the background.
-- Schwab **refresh tokens** expire after **7 days**. When that happens StockTape
-  detects it on the next refresh, shows **⚠ Auth expired**, and re-opens the
-  Schwab login automatically.
+- Schwab **access tokens** expire after 30 minutes — StockTape refreshes them
+  silently in the background; you never notice.
+- Schwab **refresh tokens** expire after **7 days**. This is a hard Schwab API
+  limit that can't be extended.
+- **StockTape warns you before it happens.** Within the last 24 hours of your
+  session, a dialog appears after the next data fetch asking if you want to
+  re-authenticate now. You can do it immediately (takes ~30 seconds) or dismiss
+  it and re-authenticate later.
+- If the refresh token does expire, StockTape detects it on the next fetch,
+  shows **⚠ Auth expired** in the menu bar, and re-opens the Schwab login
+  automatically.
 - You can also re-authenticate manually at any time:
   **⚙ Settings → Re-authenticate**.
 
