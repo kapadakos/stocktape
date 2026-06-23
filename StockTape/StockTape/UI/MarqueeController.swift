@@ -2,10 +2,13 @@
 //  MarqueeController.swift
 //  StockTape
 //
-//  Owns the scrolling ticker shown in the status item button. The full
-//  concatenated attributed string is rotated one character per tick to produce
-//  the scroll, exactly as described in the build spec. A monospaced font keeps
-//  the width from jittering as characters cycle.
+//  Pixel-smooth scrolling ticker for the menu bar status item.
+//
+//  The full attributed string is rendered once into a doubled NSImage
+//  (string + string, side by side) so the visible 196pt window can always
+//  be extracted as a single contiguous slice — no wrap-around gaps.
+//  A 60 fps timer advances the slice position by 1.5 pt/frame, giving
+//  sub-character movement that looks smooth even on non-ProMotion displays.
 //
 
 import AppKit
@@ -15,12 +18,12 @@ final class MarqueeController {
     private weak var statusItem: NSStatusItem?
     private var timer: Timer?
 
-    /// The full, concatenated ticker string.
-    private var fullString = NSAttributedString()
-    /// Current rotation offset into `fullString`.
-    private var offset = 0
+    private var fullImage: NSImage?      // doubled pre-render of the full ticker
+    private var singleWidth: CGFloat = 0 // logical-point width of one full cycle
+    private var offset: CGFloat = 0      // current scroll position in points
 
-    private let font = NSFont.monospacedSystemFont(ofSize: Constants.menuBarFontSize, weight: .medium)
+    private let font = NSFont.monospacedSystemFont(ofSize: Constants.menuBarFontSize,
+                                                    weight: .medium)
 
     init(statusItem: NSStatusItem) {
         self.statusItem = statusItem
@@ -28,114 +31,113 @@ final class MarqueeController {
 
     // MARK: - Public API
 
-    /// Replace the ticker contents with the given positions and resume scrolling.
     func setPositions(_ positions: [PositionDisplay]) {
         guard !positions.isEmpty else {
             showStatus("No positions found", color: Constants.flatColor)
             return
         }
-
-        let result = NSMutableAttributedString()
-        for position in positions {
-            result.append(segment(for: position))
-            result.append(separator())
-        }
-
-        fullString = result
+        let string = buildString(for: positions)
+        singleWidth = ceil(string.size().width)
+        guard singleWidth > 0 else { return }
+        fullImage = renderDoubled(string)
         offset = 0
-        Logger.shared.info("Marquee set: \(positions.count) position(s), \(result.length) chars total, \(Constants.marqueeDisplayWidth)-char window.")
+        Logger.shared.info("Marquee set: \(positions.count) position(s), \(Int(singleWidth))pt wide.")
         resume()
     }
 
-    /// Display fixed, non-scrolling text (loading / error / status). Pauses scroll.
     func showStatus(_ text: String, color: NSColor) {
         pause()
-        fullString = NSAttributedString()
+        fullImage = nil
         let attributed = NSAttributedString(string: text, attributes: [
             .font: font,
             .foregroundColor: color,
         ])
+        statusItem?.button?.image = nil
         statusItem?.button?.attributedTitle = attributed
     }
 
-    /// Pause scrolling without clearing the current title.
     func pause() {
         timer?.invalidate()
         timer = nil
     }
 
-    /// Resume (or start) scrolling the current ticker string.
     func resume() {
         pause()
-        guard fullString.length > 0 else { return }
-
-        // Render the first frame immediately so the bar isn't blank for a tick.
+        guard fullImage != nil else { return }
         renderCurrentFrame()
-
-        let timer = Timer(timeInterval: Constants.marqueeTickInterval, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: Constants.marqueeTickInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
-        // .common keeps the ticker advancing during menu tracking / scrolling.
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     func stop() {
         pause()
-        fullString = NSAttributedString()
+        fullImage = nil
     }
 
     // MARK: - Scrolling
 
     private func tick() {
-        guard fullString.length > 0 else { return }
-        offset += 1
-        if offset >= fullString.length { offset = 0 }
+        offset += Constants.marqueeScrollSpeed
+        if offset >= singleWidth { offset -= singleWidth }
         renderCurrentFrame()
     }
 
     private func renderCurrentFrame() {
-        let length = fullString.length
-        guard length > 0 else { return }
-
-        // Show a fixed-width window into the string so the status item stays a
-        // consistent, menu-bar-friendly width. The window scrolls left as offset
-        // advances, wrapping seamlessly at the end of the string.
-        let window = min(Constants.marqueeDisplayWidth, length)
-        let start = offset % length
-        let result = NSMutableAttributedString()
-
-        if start + window <= length {
-            result.append(fullString.attributedSubstring(from: NSRange(location: start, length: window)))
-        } else {
-            // Window wraps around the end of the string.
-            let tailLen = length - start
-            result.append(fullString.attributedSubstring(from: NSRange(location: start, length: tailLen)))
-            result.append(fullString.attributedSubstring(from: NSRange(location: 0, length: window - tailLen)))
-        }
-
-        statusItem?.button?.attributedTitle = result
+        guard let src = fullImage else { return }
+        let w = Constants.marqueeDisplayWidth
+        let h = src.size.height
+        // Crop a w×h window starting at `offset` from the doubled image.
+        let frame = NSImage(size: NSSize(width: w, height: h))
+        frame.lockFocus()
+        src.draw(
+            in:   NSRect(x: 0,      y: 0, width: w, height: h),
+            from: NSRect(x: offset, y: 0, width: w, height: h),
+            operation: .copy,
+            fraction: 1.0
+        )
+        frame.unlockFocus()
+        statusItem?.button?.attributedTitle = NSAttributedString()
+        statusItem?.button?.image = frame
+        statusItem?.button?.imageScaling = .scaleNone
     }
 
-    // MARK: - Segment building
+    // MARK: - Rendering helpers
+
+    /// Renders `string` twice side-by-side into a single NSImage so the scroll
+    /// window can always be extracted as a contiguous slice.
+    private func renderDoubled(_ string: NSAttributedString) -> NSImage {
+        let strSize = string.size()
+        let h = NSStatusBar.system.thickness
+        let image = NSImage(size: NSSize(width: singleWidth * 2, height: h))
+        image.lockFocus()
+        let y = (h - strSize.height) / 2
+        string.draw(at: NSPoint(x: 0,            y: y))
+        string.draw(at: NSPoint(x: singleWidth,   y: y))
+        image.unlockFocus()
+        return image
+    }
+
+    private func buildString(for positions: [PositionDisplay]) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        for position in positions {
+            result.append(segment(for: position))
+            result.append(separator())
+        }
+        return result
+    }
 
     private func segment(for position: PositionDisplay) -> NSAttributedString {
-        let arrow: String
-        let color: NSColor
-        switch position.direction {
-        case .up:
-            arrow = "▲"
-            color = Constants.upColor
-        case .down:
-            arrow = "▼"
-            color = Constants.downColor
-        case .flat:
-            arrow = "▪"
-            color = Constants.flatColor
-        }
-
-        let percent = String(format: "%+.2f%%", position.percentChange)
-        let text = "\(arrow) \(position.symbol) \(percent)"
+        let (arrow, color): (String, NSColor) = {
+            switch position.direction {
+            case .up:   return ("▲", Constants.upColor)
+            case .down: return ("▼", Constants.downColor)
+            case .flat: return ("▪", Constants.flatColor)
+            }
+        }()
+        let text = "\(arrow) \(position.symbol) \(String(format: "%+.2f%%", position.percentChange))"
         return NSAttributedString(string: text, attributes: [
             .font: font,
             .foregroundColor: color,

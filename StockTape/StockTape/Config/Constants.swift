@@ -12,19 +12,20 @@ enum Constants {
 
     // MARK: - Marquee
 
-    /// How often the ticker tape advances by one character.
-    static let marqueeTickInterval: TimeInterval = 0.06
+    /// Timer fires at 60 fps for pixel-smooth scrolling.
+    static let marqueeTickInterval: TimeInterval = 1.0 / 60.0
+
+    /// Points advanced per tick. 1.5 pt × 60 fps = 90 pt/sec ≈ 13 chars/sec.
+    static let marqueeScrollSpeed: CGFloat = 1.5
+
+    /// Visible pixel width of the scrolling window (matches the fixed status item width).
+    static let marqueeDisplayWidth: CGFloat = 196
 
     /// Separator drawn between position segments.
     static let separatorString = "   ·   "
 
     /// Font size used for the menu bar status item title.
     static let menuBarFontSize: CGFloat = 11
-
-    /// Number of characters visible in the scrolling window at any one time.
-    /// At 11pt monospaced (~7px/char) this is roughly 175px — fits in a crowded
-    /// menu bar while showing one position at a time.
-    static let marqueeDisplayWidth: Int = 25
 
     // MARK: - Refresh scheduling
 
