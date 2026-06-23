@@ -34,17 +34,22 @@ enum Keychain {
 
         var attributes = baseQuery(for: key)
         attributes[kSecValueData as String] = data
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
 
-        // Store with a permissive ACL (trusted-apps list = nil → any app on this
-        // Mac may read the item). This prevents macOS from showing a per-binary
-        // authorization dialog every time Xcode rebuilds with a new code signature.
-        // SecAccessCreate is deprecated but still functional; no replacement in the
-        // legacy keychain achieves the same "any app" ACL semantics.
+        // kSecAttrAccess and kSecAttrAccessible are mutually exclusive — using both
+        // causes kSecAttrAccess to be silently ignored, leaving the default per-app
+        // ACL in place and causing the Keychain dialog on every rebuild.
+        //
+        // SecAccessCreate with nil trustedList creates a "trust any application" ACL,
+        // so no per-binary authorization dialog appears regardless of code signature.
+        // SecAccessCreate is deprecated but still functional on macOS 13+; no
+        // replacement achieves the same semantics in the legacy keychain.
         var access: SecAccess?
         if SecAccessCreate("StockTape" as CFString, nil, &access) == errSecSuccess,
            let access {
             attributes[kSecAttrAccess as String] = access
+        } else {
+            // Fallback if SecAccessCreate fails — at least allow background access.
+            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         }
 
         let status = SecItemAdd(attributes as CFDictionary, nil)
