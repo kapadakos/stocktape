@@ -18,8 +18,14 @@ enum Constants {
     /// Points advanced per tick. 1.5 pt × 60 fps = 90 pt/sec ≈ 13 chars/sec.
     static let marqueeScrollSpeed: CGFloat = 1.5
 
-    /// Visible pixel width of the scrolling window (matches the fixed status item width).
-    static let marqueeDisplayWidth: CGFloat = 496
+    /// Estimate the right-side space available for the ticker at launch.
+    /// The right zone of the menu bar is roughly half the screen width;
+    /// we reserve ~320 pt for system items (clock, control centre, etc.)
+    /// and enforce a minimum of 200 pt.
+    static var adaptiveTickerWidth: CGFloat {
+        let screenWidth = NSScreen.main?.frame.width ?? 1280
+        return max(200, (screenWidth / 2) - 320)
+    }
 
     /// Separator drawn between position segments.
     static let separatorString = "   ·   "

@@ -63,8 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Setup
 
     private func setupStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: Constants.marqueeDisplayWidth)
-        marquee = MarqueeController(statusItem: statusItem)
+        let tickerWidth = Constants.adaptiveTickerWidth
+        statusItem = NSStatusBar.system.statusItem(withLength: tickerWidth)
+        marquee = MarqueeController(statusItem: statusItem, displayWidth: tickerWidth - 4)
         menuBuilder = MenuBuilder(handler: self)
 
         let menu = NSMenu()
