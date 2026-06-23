@@ -92,9 +92,6 @@ enum Keychain {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Constants.keychainService,
             kSecAttrAccount as String: key.rawValue,
-            // Data-protection keychain: no ACL dialogs, app-sandboxed by
-            // bundle ID + team ID. Survives rebuilds without re-prompting.
-            kSecUseDataProtectionKeychain as String: true,
         ]
     }
 }
