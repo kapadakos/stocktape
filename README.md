@@ -38,7 +38,7 @@ are never shared and never leave your Mac.
 ## Installation
 
 ```bash
-git clone https://github.com/{user}/stocktape.git
+git clone https://github.com/kapadakos/stocktape.git
 cd stocktape/StockTape
 open -a Xcode StockTape.xcodeproj
 ```
@@ -115,7 +115,8 @@ it. This uses the modern `SMAppService` API (macOS 13+).
 - Your credentials **never leave your Mac**.
 - Client ID, Client Secret, and OAuth tokens are stored only in the **macOS
   Keychain**.
-- StockTape communicates only with `api.schwabapi.com`.
+- StockTape communicates only with `api.schwabapi.com` (positions and tokens) and
+  `query1.finance.yahoo.com` (public quote prices — no credentials sent).
 - **No analytics, no telemetry, no third-party services.**
 - A local log is written to `~/.stocktape/stocktape.log` for troubleshooting. It
   never contains tokens or credentials, and it is rotated automatically.
@@ -127,7 +128,6 @@ it. This uses the modern `SMAppService` API (macOS 13+).
   holidays. This is harmless — it just refreshes more often than necessary.
 - **OAuth requires the copy/paste step** described under *First Launch* because
   of Schwab's `https://127.0.0.1` redirect requirement.
-- **No app icon yet** — the asset catalog ships with empty icon slots.
 
 ## Contributing
 
