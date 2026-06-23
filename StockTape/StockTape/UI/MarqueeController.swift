@@ -52,8 +52,18 @@ final class MarqueeController {
             .font: font,
             .foregroundColor: color,
         ])
-        statusItem?.button?.image = nil
-        statusItem?.button?.attributedTitle = attributed
+        // Render into a full-width image so the status item never changes size
+        // when switching between the ticker and a status message.
+        let w = Constants.marqueeDisplayWidth
+        let h = NSStatusBar.system.thickness
+        let img = NSImage(size: NSSize(width: w, height: h))
+        img.lockFocus()
+        let strSize = attributed.size()
+        attributed.draw(at: NSPoint(x: 4, y: (h - strSize.height) / 2))
+        img.unlockFocus()
+        statusItem?.button?.attributedTitle = NSAttributedString()
+        statusItem?.button?.image = img
+        statusItem?.button?.imageScaling = .scaleNone
     }
 
     func pause() {

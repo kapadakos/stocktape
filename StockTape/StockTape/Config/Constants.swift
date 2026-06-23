@@ -19,7 +19,7 @@ enum Constants {
     static let marqueeScrollSpeed: CGFloat = 1.5
 
     /// Visible pixel width of the scrolling window (matches the fixed status item width).
-    static let marqueeDisplayWidth: CGFloat = 196
+    static let marqueeDisplayWidth: CGFloat = 496
 
     /// Separator drawn between position segments.
     static let separatorString = "   ·   "
