@@ -13,6 +13,7 @@
 		AB5AC570D4CFC234BE8AC071 /* CallbackServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15CE57A10B6351DEFDB4DBF /* CallbackServer.swift */; };
 		07BC19C087479B73DD22AD02 /* SchwabClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99ED6DE270F75535B753ECB3 /* SchwabClient.swift */; };
 		C0D3593A60C3C3ED1523B4DB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3DA8669FC97EDEA61FB913 /* Models.swift */; };
+		58F9BBB071E8490D988AB8AA /* YahooFinanceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C299B66B8B44D8BC075346 /* YahooFinanceClient.swift */; };
 		D6CA982624C5F626F821BA39 /* MarqueeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1C4A3CF4FBCE9B6E274E9B /* MarqueeController.swift */; };
 		DC58A707DAC7A9748A5E4E3F /* MenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28B9F3435135CD0357C4F099 /* MenuBuilder.swift */; };
 		B055A27FF9FD9A989A0626E5 /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41185F507BCC650F5B59E4F9 /* OnboardingWindow.swift */; };
@@ -31,6 +32,7 @@
 		A15CE57A10B6351DEFDB4DBF /* CallbackServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackServer.swift; sourceTree = "<group>"; };
 		99ED6DE270F75535B753ECB3 /* SchwabClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchwabClient.swift; sourceTree = "<group>"; };
 		FE3DA8669FC97EDEA61FB913 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		60C299B66B8B44D8BC075346 /* YahooFinanceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YahooFinanceClient.swift; sourceTree = "<group>"; };
 		BF1C4A3CF4FBCE9B6E274E9B /* MarqueeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeController.swift; sourceTree = "<group>"; };
 		28B9F3435135CD0357C4F099 /* MenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBuilder.swift; sourceTree = "<group>"; };
 		41185F507BCC650F5B59E4F9 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 			children = (
 				99ED6DE270F75535B753ECB3 /* SchwabClient.swift */,
 				FE3DA8669FC97EDEA61FB913 /* Models.swift */,
+				60C299B66B8B44D8BC075346 /* YahooFinanceClient.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -206,6 +209,7 @@
 				AB5AC570D4CFC234BE8AC071 /* CallbackServer.swift in Sources */,
 				07BC19C087479B73DD22AD02 /* SchwabClient.swift in Sources */,
 				C0D3593A60C3C3ED1523B4DB /* Models.swift in Sources */,
+				58F9BBB071E8490D988AB8AA /* YahooFinanceClient.swift in Sources */,
 				D6CA982624C5F626F821BA39 /* MarqueeController.swift in Sources */,
 				DC58A707DAC7A9748A5E4E3F /* MenuBuilder.swift in Sources */,
 				B055A27FF9FD9A989A0626E5 /* OnboardingWindow.swift in Sources */,

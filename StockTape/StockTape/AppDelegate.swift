@@ -63,7 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Setup
 
     private func setupStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // Fixed width keeps the item stable in the menu bar. variableLength items
+        // can flicker and get hidden by macOS when their width changes between frames.
+        statusItem = NSStatusBar.system.statusItem(withLength: 200)
+        statusItem.button?.cell?.truncatesLastVisibleLine = false
+        statusItem.button?.lineBreakMode = .byClipping
         marquee = MarqueeController(statusItem: statusItem)
         menuBuilder = MenuBuilder(handler: self)
 

@@ -237,7 +237,9 @@ final class AuthManager {
             switch result {
             case .success:
                 Logger.shared.info("Token exchange succeeded.")
-                NotificationCenter.default.post(name: AuthManager.didAuthenticate, object: nil)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: AuthManager.didAuthenticate, object: nil)
+                }
             case .failure(let error):
                 self?.postFailure(error)
             }
@@ -297,7 +299,9 @@ final class AuthManager {
                 if case AuthError.refreshFailed(401) = error {
                     Logger.shared.warn("Refresh token rejected (401); clearing tokens and requiring re-auth.")
                     self.clearTokens()
-                    NotificationCenter.default.post(name: AuthManager.didRequireReauth, object: nil)
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: AuthManager.didRequireReauth, object: nil)
+                    }
                 }
                 completion(.failure(error))
             }

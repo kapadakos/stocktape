@@ -43,6 +43,7 @@ final class MarqueeController {
 
         fullString = result
         offset = 0
+        Logger.shared.info("Marquee set: \(positions.count) position(s), \(result.length) chars total, \(Constants.marqueeDisplayWidth)-char window.")
         resume()
     }
 
@@ -97,13 +98,23 @@ final class MarqueeController {
         let length = fullString.length
         guard length > 0 else { return }
 
-        let head = fullString.attributedSubstring(from: NSRange(location: offset, length: length - offset))
-        let rotated = NSMutableAttributedString(attributedString: head)
-        if offset > 0 {
-            let tail = fullString.attributedSubstring(from: NSRange(location: 0, length: offset))
-            rotated.append(tail)
+        // Show a fixed-width window into the string so the status item stays a
+        // consistent, menu-bar-friendly width. The window scrolls left as offset
+        // advances, wrapping seamlessly at the end of the string.
+        let window = min(Constants.marqueeDisplayWidth, length)
+        let start = offset % length
+        let result = NSMutableAttributedString()
+
+        if start + window <= length {
+            result.append(fullString.attributedSubstring(from: NSRange(location: start, length: window)))
+        } else {
+            // Window wraps around the end of the string.
+            let tailLen = length - start
+            result.append(fullString.attributedSubstring(from: NSRange(location: start, length: tailLen)))
+            result.append(fullString.attributedSubstring(from: NSRange(location: 0, length: window - tailLen)))
         }
-        statusItem?.button?.attributedTitle = rotated
+
+        statusItem?.button?.attributedTitle = result
     }
 
     // MARK: - Segment building

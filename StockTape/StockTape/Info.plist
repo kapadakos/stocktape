@@ -27,6 +27,10 @@
     <key>LSUIElement</key>
     <true/>
 
+    <!-- Only one instance may run at a time. Subsequent launches activate the existing one. -->
+    <key>LSMultipleInstancesProhibited</key>
+    <true/>
+
     <!-- Allow the local loopback callback server (Network.framework) used by OAuth. -->
     <key>NSAppTransportSecurity</key>
     <dict>

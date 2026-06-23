@@ -50,6 +50,15 @@ enum Keychain {
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        if status != errSecSuccess && status != errSecItemNotFound {
+            if status == errSecUserCanceled {
+                Logger.shared.warn("Keychain read denied for \(key.rawValue) — user clicked Deny on the access dialog.")
+            } else {
+                Logger.shared.error("Keychain read failed for \(key.rawValue): OSStatus \(status)")
+            }
+        }
+
         guard status == errSecSuccess,
               let data = result as? Data,
               let string = String(data: data, encoding: .utf8)
