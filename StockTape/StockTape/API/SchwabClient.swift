@@ -37,6 +37,7 @@ final class SchwabClient {
 
     private let auth: AuthManager
     private let session: URLSession
+    private let yahoo = YahooFinanceClient()
 
     init(auth: AuthManager = .shared) {
         self.auth = auth
@@ -126,7 +127,7 @@ final class SchwabClient {
         }
     }
 
-    // MARK: - Step 3: quotes
+    // MARK: - Step 3: quotes (Yahoo primary, Schwab fallback)
 
     private func resolve(positions: [Position],
                          completion: @escaping (Result<[PositionDisplay], Error>) -> Void) {
@@ -142,25 +143,44 @@ final class SchwabClient {
             return
         }
 
-        fetchQuotes(for: symbols) { result in
-            switch result {
-            case .failure(let error):
-                completion(.failure(error))
-            case .success(let quotes):
-                let displays: [PositionDisplay] = symbols.compactMap { symbol in
-                    guard let quote = quotes[symbol]?.quote,
-                          let price = quote.currentPrice else { return nil }
-                    return PositionDisplay(symbol: symbol,
-                                           price: price,
-                                           percentChange: quote.percentChange)
-                }
+        yahoo.fetchQuotes(symbols: symbols) { [weak self] yahooMap in
+            guard let self else { return }
+            let missing = symbols.filter { yahooMap[$0] == nil }
+
+            if missing.isEmpty {
+                // Yahoo resolved everything — no Schwab quote call needed.
+                let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: [:])
                 completion(.success(displays))
+            } else {
+                // Fall back to Schwab for any symbols Yahoo couldn't resolve.
+                Logger.shared.info("Yahoo missed \(missing.count) symbol(s); falling back to Schwab quotes.")
+                self.fetchSchwabQuotes(for: symbols) { result in
+                    let schwabMap = (try? result.get()) ?? [:]
+                    let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: schwabMap)
+                    if displays.isEmpty {
+                        completion(.failure(ClientError.noData))
+                    } else {
+                        completion(.success(displays))
+                    }
+                }
             }
         }
     }
 
-    private func fetchQuotes(for symbols: [String],
-                             completion: @escaping (Result<[String: QuoteContainer], Error>) -> Void) {
+    private func buildDisplays(symbols: [String],
+                                yahooMap: [String: YahooFinanceClient.Quote],
+                                schwabMap: [String: QuoteContainer]) -> [PositionDisplay] {
+        symbols.compactMap { symbol in
+            if let yq = yahooMap[symbol] {
+                return PositionDisplay(symbol: symbol, price: yq.price, percentChange: yq.percentChange)
+            }
+            guard let sq = schwabMap[symbol]?.quote, let price = sq.currentPrice else { return nil }
+            return PositionDisplay(symbol: symbol, price: price, percentChange: sq.percentChange)
+        }
+    }
+
+    private func fetchSchwabQuotes(for symbols: [String],
+                                   completion: @escaping (Result<[String: QuoteContainer], Error>) -> Void) {
         var components = URLComponents(string: Constants.quotesURL)!
         components.queryItems = [
             URLQueryItem(name: "symbols", value: symbols.joined(separator: ",")),

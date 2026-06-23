@@ -13,13 +13,18 @@ enum Constants {
     // MARK: - Marquee
 
     /// How often the ticker tape advances by one character.
-    static let marqueeTickInterval: TimeInterval = 0.15
+    static let marqueeTickInterval: TimeInterval = 0.06
 
     /// Separator drawn between position segments.
     static let separatorString = "   ·   "
 
     /// Font size used for the menu bar status item title.
     static let menuBarFontSize: CGFloat = 11
+
+    /// Number of characters visible in the scrolling window at any one time.
+    /// At 11pt monospaced (~7px/char) this is roughly 175px — fits in a crowded
+    /// menu bar while showing one position at a time.
+    static let marqueeDisplayWidth: Int = 25
 
     // MARK: - Refresh scheduling
 
