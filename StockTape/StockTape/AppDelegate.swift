@@ -307,6 +307,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSMenuDelegate {
 
+    func menuWillOpen(_ menu: NSMenu) {
+        // Freeze the ticker while the dropdown is open so the status item title
+        // stays still and its width can't shift underneath the open menu.
+        marquee.pause()
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        marquee.resume()
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         let fresh = menuBuilder.buildMenu(state: state,
                                           positions: positions,

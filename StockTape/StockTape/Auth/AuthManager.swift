@@ -228,12 +228,12 @@ final class AuthManager {
     // MARK: - Token exchange & refresh
 
     private func exchangeCodeForTokens(_ code: String) {
-        var params = [
+        let params = [
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": Constants.redirectURI,
         ]
-        requestTokens(parameters: &params, failureWrap: AuthError.tokenExchangeFailed) { [weak self] result in
+        requestTokens(parameters: params, failureWrap: AuthError.tokenExchangeFailed) { [weak self] result in
             switch result {
             case .success:
                 Logger.shared.info("Token exchange succeeded.")
@@ -284,11 +284,11 @@ final class AuthManager {
         }
 
         Logger.shared.info("Refreshing access token.")
-        var params = [
+        let params = [
             "grant_type": "refresh_token",
             "refresh_token": refreshToken,
         ]
-        requestTokens(parameters: &params, failureWrap: AuthError.refreshFailed) { result in
+        requestTokens(parameters: params, failureWrap: AuthError.refreshFailed) { result in
             switch result {
             case .success:
                 Logger.shared.info("Token refresh succeeded.")
@@ -310,9 +310,23 @@ final class AuthManager {
 
     // MARK: - Shared token request
 
-    private func requestTokens(parameters: inout [String: String],
+    private func requestTokens(parameters: [String: String],
                                failureWrap: @escaping (Int) -> AuthError,
                                completion: @escaping (Result<Void, Error>) -> Void) {
+        // Run keychain reads and network setup on a background thread so the
+        // main thread stays free (blocking it here would prevent any keychain
+        // auth dialog from drawing, causing a beach ball).
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.performRequestTokens(parameters: parameters,
+                                      failureWrap: failureWrap,
+                                      completion: completion)
+        }
+    }
+
+    private func performRequestTokens(parameters: [String: String],
+                                      failureWrap: @escaping (Int) -> AuthError,
+                                      completion: @escaping (Result<Void, Error>) -> Void) {
         guard let clientID = Keychain.get(.clientID),
               let clientSecret = Keychain.get(.clientSecret) else {
             completion(.failure(AuthError.missingCredentials))

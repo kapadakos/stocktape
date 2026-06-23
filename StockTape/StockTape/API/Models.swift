@@ -48,7 +48,7 @@ struct QuoteContainer: Decodable {
 struct Quote: Decodable {
     let mark: Double?
     let lastPrice: Double?
-    let netPercentChangeInDouble: Double?
+    let netPercentChange: Double?
     let closePrice: Double?
 
     /// Current price: `mark`, falling back to `lastPrice` (used for crypto).
@@ -58,7 +58,7 @@ struct Quote: Decodable {
 
     /// Signed percent change for the day; treated as flat when absent.
     var percentChange: Double {
-        netPercentChangeInDouble ?? 0
+        netPercentChange ?? 0
     }
 }
 
