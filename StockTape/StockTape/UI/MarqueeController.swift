@@ -24,11 +24,9 @@ final class MarqueeController {
 
     private let font = NSFont.monospacedSystemFont(ofSize: Constants.menuBarFontSize,
                                                     weight: .medium)
-    private let displayWidth: CGFloat
 
-    init(statusItem: NSStatusItem, displayWidth: CGFloat) {
+    init(statusItem: NSStatusItem) {
         self.statusItem = statusItem
-        self.displayWidth = displayWidth
     }
 
     // MARK: - Public API
@@ -54,18 +52,8 @@ final class MarqueeController {
             .font: font,
             .foregroundColor: color,
         ])
-        // Render into a full-width image so the status item never changes size
-        // when switching between the ticker and a status message.
-        let w = displayWidth
-        let h = NSStatusBar.system.thickness
-        let img = NSImage(size: NSSize(width: w, height: h))
-        img.lockFocus()
-        let strSize = attributed.size()
-        attributed.draw(at: NSPoint(x: 4, y: (h - strSize.height) / 2))
-        img.unlockFocus()
-        statusItem?.button?.attributedTitle = NSAttributedString()
-        statusItem?.button?.image = img
-        statusItem?.button?.imageScaling = .scaleNone
+        statusItem?.button?.image = nil
+        statusItem?.button?.attributedTitle = attributed
     }
 
     func pause() {
@@ -99,7 +87,7 @@ final class MarqueeController {
 
     private func renderCurrentFrame() {
         guard let src = fullImage else { return }
-        let w = displayWidth
+        let w = Constants.marqueeDisplayWidth
         let h = src.size.height
         // Crop a w×h window starting at `offset` from the doubled image.
         let frame = NSImage(size: NSSize(width: w, height: h))
