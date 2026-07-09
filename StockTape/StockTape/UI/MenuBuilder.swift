@@ -29,6 +29,8 @@ protocol MenuActionHandler: AnyObject {
     func menuDidSelectToggleLaunchAtLogin()
     func menuDidSelectCompleteSetup()
     func menuDidSelectQuit()
+    func menuDidChangeScrollSpeed(_ speed: CGFloat)
+    func menuDidChangeVisibleWidth(_ width: CGFloat)
 }
 
 final class MenuBuilder: NSObject {
@@ -94,6 +96,7 @@ final class MenuBuilder: NSObject {
             addStatusItem("No open positions found.", to: menu)
             menu.addItem(.separator())
             addAction("↻  Refresh Now", #selector(refresh), to: menu)
+            addTickerControls(to: menu)
             addSettingsAndQuit(to: menu, launchAtLogin: launchAtLogin)
 
         case .normal:
@@ -104,6 +107,7 @@ final class MenuBuilder: NSObject {
             }
             menu.addItem(.separator())
             addAction("↻  Refresh Now", #selector(refresh), to: menu)
+            addTickerControls(to: menu)
             addSettingsAndQuit(to: menu, launchAtLogin: launchAtLogin)
         }
 
@@ -157,6 +161,51 @@ final class MenuBuilder: NSObject {
     private func addQuit(to menu: NSMenu) {
         menu.addItem(.separator())
         addAction("Quit", #selector(quit), to: menu)
+    }
+
+    // MARK: - Ticker controls (speed / length sliders)
+
+    private func addTickerControls(to menu: NSMenu) {
+        menu.addItem(.separator())
+        menu.addItem(sliderRow(label: "Speed",
+                               min: TickerSettings.minScrollSpeed,
+                               max: TickerSettings.maxScrollSpeed,
+                               value: TickerSettings.scrollSpeed,
+                               action: #selector(speedChanged(_:))))
+        menu.addItem(sliderRow(label: "Length",
+                               min: TickerSettings.minVisibleWidth,
+                               max: TickerSettings.maxVisibleWidth,
+                               value: TickerSettings.visibleWidth,
+                               action: #selector(widthChanged(_:))))
+    }
+
+    private func sliderRow(label: String,
+                           min: CGFloat,
+                           max: CGFloat,
+                           value: CGFloat,
+                           action: Selector) -> NSMenuItem {
+        let width: CGFloat = 220
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 40))
+
+        let title = NSTextField(labelWithString: label)
+        title.font = NSFont.menuFont(ofSize: 11)
+        title.textColor = .secondaryLabelColor
+        title.frame = NSRect(x: 21, y: 22, width: width - 42, height: 14)
+
+        let slider = NSSlider(value: Double(value),
+                              minValue: Double(min),
+                              maxValue: Double(max),
+                              target: self,
+                              action: action)
+        slider.isContinuous = true
+        slider.frame = NSRect(x: 20, y: 4, width: width - 40, height: 19)
+
+        container.addSubview(title)
+        container.addSubview(slider)
+
+        let item = NSMenuItem()
+        item.view = container
+        return item
     }
 
     // MARK: - Position rows
@@ -239,4 +288,12 @@ final class MenuBuilder: NSObject {
     @objc private func toggleLaunchAtLogin() { handler?.menuDidSelectToggleLaunchAtLogin() }
     @objc private func completeSetup() { handler?.menuDidSelectCompleteSetup() }
     @objc private func quit() { handler?.menuDidSelectQuit() }
+
+    @objc private func speedChanged(_ sender: NSSlider) {
+        handler?.menuDidChangeScrollSpeed(CGFloat(sender.doubleValue))
+    }
+
+    @objc private func widthChanged(_ sender: NSSlider) {
+        handler?.menuDidChangeVisibleWidth(CGFloat(sender.doubleValue))
+    }
 }
