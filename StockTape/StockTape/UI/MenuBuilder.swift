@@ -43,6 +43,7 @@ final class MenuBuilder: NSObject {
 
     private let symbolWidth = 6
     private let priceWidth = 12
+    private let changeWidth = 10
 
     init(handler: MenuActionHandler) {
         self.handler = handler
@@ -92,7 +93,7 @@ final class MenuBuilder: NSObject {
             addSettingsAndQuit(to: menu, launchAtLogin: launchAtLogin)
 
         case .noPositions:
-            addHeader(lastUpdate: lastUpdate, to: menu)
+            addHeader(lastUpdate: lastUpdate, positions: positions, to: menu)
             addStatusItem("No open positions found.", to: menu)
             menu.addItem(.separator())
             addAction("↻  Refresh Now", #selector(refresh), to: menu)
@@ -100,7 +101,7 @@ final class MenuBuilder: NSObject {
             addSettingsAndQuit(to: menu, launchAtLogin: launchAtLogin)
 
         case .normal:
-            addHeader(lastUpdate: lastUpdate, to: menu)
+            addHeader(lastUpdate: lastUpdate, positions: positions, to: menu)
             menu.addItem(.separator())
             for position in positions {
                 menu.addItem(positionRow(for: position))
@@ -116,10 +117,35 @@ final class MenuBuilder: NSObject {
 
     // MARK: - Sections
 
-    private func addHeader(lastUpdate: Date?, to menu: NSMenu) {
+    private func addHeader(lastUpdate: Date?, positions: [PositionDisplay], to menu: NSMenu) {
         let time = lastUpdate.map { timeFormatter.string(from: $0) } ?? "—"
-        let item = NSMenuItem(title: "📊 Positions  —  updated \(time)", action: nil, keyEquivalent: "")
+        let headerFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        let title = NSMutableAttributedString(string: "📊 Positions", attributes: [
+            .font: headerFont,
+            .foregroundColor: NSColor.labelColor,
+        ])
+
+        // Portfolio total: sum of every position's unrealized P&L.
+        let pnls = positions.compactMap(\.totalPnL)
+        if !pnls.isEmpty {
+            let total = pnls.reduce(0, +)
+            let color: NSColor = total > 0 ? Constants.upColor
+                               : total < 0 ? Constants.downColor
+                               : Constants.flatColor
+            title.append(NSAttributedString(string: "   \(formattedPnL(total))", attributes: [
+                .font: headerFont,
+                .foregroundColor: color,
+            ]))
+        }
+
+        title.append(NSAttributedString(string: "   ·   updated \(time)", attributes: [
+            .font: NSFont.systemFont(ofSize: 12),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]))
+
+        let item = NSMenuItem()
         item.isEnabled = false
+        item.attributedTitle = title
         menu.addItem(item)
     }
 
@@ -242,16 +268,34 @@ final class MenuBuilder: NSObject {
             color = Constants.flatColor
         }
         let changeText = String(format: "%@ %+.2f%%", arrow, position.percentChange)
+        // Pad so the P&L column lines up regardless of the change's width.
+        let changePadded = changeText.padding(toLength: max(changeWidth, changeText.count),
+                                              withPad: " ", startingAt: 0)
 
         let result = NSMutableAttributedString()
         result.append(NSAttributedString(string: "\(symbol)  \(pricePadded)    ", attributes: [
             .font: rowFont,
             .foregroundColor: NSColor.labelColor,
         ]))
-        result.append(NSAttributedString(string: changeText, attributes: [
+        result.append(NSAttributedString(string: changePadded, attributes: [
             .font: rowFont,
             .foregroundColor: color,
         ]))
+
+        // Column 4: total unrealized P&L (and return %), when cost basis is known.
+        if let pnl = position.totalPnL {
+            let pnlColor: NSColor = pnl > 0 ? Constants.upColor
+                                  : pnl < 0 ? Constants.downColor
+                                  : Constants.flatColor
+            var text = "  \(formattedPnL(pnl))"
+            if let pct = position.totalReturnPercent {
+                text += String(format: " (%@%.1f%%)", pct < 0 ? "−" : "+", abs(pct))
+            }
+            result.append(NSAttributedString(string: text, attributes: [
+                .font: rowFont,
+                .foregroundColor: pnlColor,
+            ]))
+        }
         return result
     }
 
@@ -261,6 +305,16 @@ final class MenuBuilder: NSObject {
         priceFormatter.minimumFractionDigits = price > 1000 ? 0 : 2
         let number = priceFormatter.string(from: NSNumber(value: price)) ?? "\(price)"
         return "$\(number)"
+    }
+
+    private func formattedPnL(_ pnl: Double) -> String {
+        // Whole dollars once the magnitude reaches $1,000; cents below that.
+        let magnitude = abs(pnl)
+        priceFormatter.maximumFractionDigits = magnitude >= 1000 ? 0 : 2
+        priceFormatter.minimumFractionDigits = magnitude >= 1000 ? 0 : 2
+        let number = priceFormatter.string(from: NSNumber(value: magnitude)) ?? "\(magnitude)"
+        let sign = pnl < 0 ? "−" : "+"
+        return "\(sign)$\(number)"
     }
 
     // MARK: - Action item helpers
