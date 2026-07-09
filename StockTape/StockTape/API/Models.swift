@@ -28,6 +28,11 @@ struct Position: Decodable {
     let longQuantity: Double
     let shortQuantity: Double
     let marketValue: Double
+    /// Average cost per share. Optional because some asset types omit it.
+    let averagePrice: Double?
+
+    /// Signed share count: positive for long, negative for short.
+    var netQuantity: Double { longQuantity - shortQuantity }
 }
 
 struct Instrument: Decodable {
@@ -69,6 +74,11 @@ struct PositionDisplay {
     let symbol: String
     let price: Double
     let percentChange: Double
+    /// Total unrealized gain/loss in dollars: (price − avg cost) × quantity.
+    /// `nil` when the cost basis is unknown.
+    let totalPnL: Double?
+    /// Total return as a percent of cost basis. `nil` when cost basis is unknown.
+    let totalReturnPercent: Double?
 
     enum Direction {
         case up, down, flat

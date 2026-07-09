@@ -143,20 +143,24 @@ final class SchwabClient {
             return
         }
 
+        // Aggregate cost basis per symbol so total P&L can be computed from the
+        // displayed price. Lots are summed across accounts.
+        let costBasis = costBasisBySymbol(from: openPositions)
+
         yahoo.fetchQuotes(symbols: symbols) { [weak self] yahooMap in
             guard let self else { return }
             let missing = symbols.filter { yahooMap[$0] == nil }
 
             if missing.isEmpty {
                 // Yahoo resolved everything — no Schwab quote call needed.
-                let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: [:])
+                let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: [:], costBasis: costBasis)
                 completion(.success(displays))
             } else {
                 // Fall back to Schwab for any symbols Yahoo couldn't resolve.
                 Logger.shared.info("Yahoo missed \(missing.count) symbol(s); falling back to Schwab quotes.")
                 self.fetchSchwabQuotes(for: symbols) { result in
                     let schwabMap = (try? result.get()) ?? [:]
-                    let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: schwabMap)
+                    let displays = self.buildDisplays(symbols: symbols, yahooMap: yahooMap, schwabMap: schwabMap, costBasis: costBasis)
                     if displays.isEmpty {
                         completion(.failure(ClientError.noData))
                     } else {
@@ -167,15 +171,43 @@ final class SchwabClient {
         }
     }
 
+    /// Net share count and total cost per symbol, summed across all lots/accounts.
+    private func costBasisBySymbol(from positions: [Position]) -> [String: (quantity: Double, cost: Double)] {
+        var result: [String: (quantity: Double, cost: Double)] = [:]
+        for position in positions {
+            guard let avg = position.averagePrice else { continue }
+            let symbol = position.instrument.symbol
+            var entry = result[symbol] ?? (0, 0)
+            entry.quantity += position.netQuantity
+            entry.cost += avg * position.netQuantity
+            result[symbol] = entry
+        }
+        return result
+    }
+
     private func buildDisplays(symbols: [String],
                                 yahooMap: [String: YahooFinanceClient.Quote],
-                                schwabMap: [String: QuoteContainer]) -> [PositionDisplay] {
-        symbols.compactMap { symbol in
+                                schwabMap: [String: QuoteContainer],
+                                costBasis: [String: (quantity: Double, cost: Double)]) -> [PositionDisplay] {
+        // Total unrealized P&L (dollars) and return (percent of cost) at the
+        // displayed price; nil when cost basis is unknown.
+        func metrics(at price: Double, for symbol: String) -> (pnl: Double?, percent: Double?) {
+            guard let cb = costBasis[symbol], cb.quantity != 0 else { return (nil, nil) }
+            let pnl = price * cb.quantity - cb.cost
+            let percent = cb.cost != 0 ? pnl / abs(cb.cost) * 100 : nil
+            return (pnl, percent)
+        }
+
+        return symbols.compactMap { symbol in
             if let yq = yahooMap[symbol] {
-                return PositionDisplay(symbol: symbol, price: yq.price, percentChange: yq.percentChange)
+                let m = metrics(at: yq.price, for: symbol)
+                return PositionDisplay(symbol: symbol, price: yq.price, percentChange: yq.percentChange,
+                                       totalPnL: m.pnl, totalReturnPercent: m.percent)
             }
             guard let sq = schwabMap[symbol]?.quote, let price = sq.currentPrice else { return nil }
-            return PositionDisplay(symbol: symbol, price: price, percentChange: sq.percentChange)
+            let m = metrics(at: price, for: symbol)
+            return PositionDisplay(symbol: symbol, price: price, percentChange: sq.percentChange,
+                                   totalPnL: m.pnl, totalReturnPercent: m.percent)
         }
     }
 
