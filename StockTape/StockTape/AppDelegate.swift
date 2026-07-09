@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         // Fixed width keeps the item stable in the menu bar. variableLength items
         // can flicker and get hidden by macOS when their width changes between frames.
-        statusItem = NSStatusBar.system.statusItem(withLength: 200)
+        statusItem = NSStatusBar.system.statusItem(withLength: TickerSettings.visibleWidth)
         statusItem.button?.cell?.truncatesLastVisibleLine = false
         statusItem.button?.lineBreakMode = .byClipping
         marquee = MarqueeController(statusItem: statusItem)
@@ -133,7 +133,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshTimer = timer
     }
 
-    private func performRefresh() {
+    /// Fetch positions. When `background` is true (e.g. a stale-cache refresh
+    /// triggered by opening the menu), the ticker keeps scrolling the existing
+    /// data instead of flashing an "Updating…" status, and a failure is logged
+    /// silently rather than replacing the tape with an error badge.
+    private func performRefresh(background: Bool = false) {
         guard auth.isAuthenticated else {
             Logger.shared.warn("Refresh requested but not authenticated.")
             return
@@ -141,12 +145,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !isRefreshing else { return }
         isRefreshing = true
 
-        if hasLoadedOnce {
-            state = .refreshing
-            marquee.showStatus("↻ Updating...", color: .secondaryLabelColor)
-        } else {
-            state = .loading
-            marquee.showStatus("StockTape ↻", color: .secondaryLabelColor)
+        if !background {
+            if hasLoadedOnce {
+                state = .refreshing
+                marquee.showStatus("↻ Updating...", color: .secondaryLabelColor)
+            } else {
+                state = .loading
+                marquee.showStatus("StockTape ↻", color: .secondaryLabelColor)
+            }
         }
 
         client.fetchPositions { [weak self] result in
@@ -165,24 +171,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.state = .normal
                     self.marquee.setPositions(positions)
                 }
-                Logger.shared.info("Refresh succeeded: \(positions.count) position(s).")
+                Logger.shared.info("Refresh succeeded: \(positions.count) position(s)\(background ? " (background)" : "").")
                 self.checkRefreshTokenExpiry()
             case .failure(let error):
-                self.handleRefreshFailure(error)
+                self.handleRefreshFailure(error, background: background)
             }
 
             self.scheduleNextRefresh()
         }
     }
 
-    private func handleRefreshFailure(_ error: Error) {
-        Logger.shared.error("Refresh failed: \(error.localizedDescription)")
+    private func handleRefreshFailure(_ error: Error, background: Bool = false) {
+        Logger.shared.error("Refresh failed\(background ? " (background)" : ""): \(error.localizedDescription)")
 
-        // Distinguish auth failures from network failures for the badge.
+        // A background refresh keeps showing the last good tape rather than
+        // replacing it with an error badge — except for auth expiry, which the
+        // user needs to see and act on.
         if case SchwabClient.ClientError.auth = error {
             state = .authExpired
             marquee.showStatus("⚠ Auth expired", color: .systemOrange)
-        } else {
+        } else if !background {
             state = .networkError
             marquee.showStatus("⚠ Network error", color: .systemOrange)
         }
@@ -307,15 +315,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSMenuDelegate {
 
-    func menuWillOpen(_ menu: NSMenu) {
-        // Freeze the ticker while the dropdown is open so the status item title
-        // stays still and its width can't shift underneath the open menu.
-        marquee.pause()
-    }
-
-    func menuDidClose(_ menu: NSMenu) {
-        marquee.resume()
-    }
+    // The ticker keeps scrolling while the dropdown is open — its width is fixed,
+    // so there's no risk of the status item reflowing underneath the menu.
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         let fresh = menuBuilder.buildMenu(state: state,
@@ -327,9 +328,11 @@ extension AppDelegate: NSMenuDelegate {
         menu.removeAllItems()
         for item in items { menu.addItem(item) }
 
-        // If the cache is older than the threshold, refresh in the background.
+        // If the cache is older than the threshold, refresh silently in the
+        // background — the ticker keeps scrolling and the menu updates once the
+        // fresh data lands.
         if state == .normal || state == .noPositions, isCacheStale {
-            performRefresh()
+            performRefresh(background: true)
         }
     }
 }
@@ -373,5 +376,13 @@ extension AppDelegate: MenuActionHandler {
 
     func menuDidSelectQuit() {
         NSApp.terminate(nil)
+    }
+
+    func menuDidChangeScrollSpeed(_ speed: CGFloat) {
+        marquee.setScrollSpeed(speed)
+    }
+
+    func menuDidChangeVisibleWidth(_ width: CGFloat) {
+        marquee.setVisibleWidth(width)
     }
 }

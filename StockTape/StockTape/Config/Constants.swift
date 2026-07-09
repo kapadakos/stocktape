@@ -86,3 +86,49 @@ enum Constants {
     /// Color used for the separator glyph.
     static let separatorColor = NSColor.tertiaryLabelColor
 }
+
+// MARK: - User-tunable settings
+
+/// User-adjustable ticker settings, persisted in `UserDefaults`. Falls back to
+/// the `Constants` defaults on first launch. Read live every frame so slider
+/// changes take effect immediately.
+enum TickerSettings {
+
+    private static let defaults = UserDefaults.standard
+    private static let speedKey = "marqueeScrollSpeed"
+    private static let widthKey = "marqueeVisibleWidth"
+
+    // Allowed slider ranges.
+    static let minScrollSpeed: CGFloat = 10
+    static let maxScrollSpeed: CGFloat = 120
+    static let minVisibleWidth: CGFloat = 60
+    static let maxVisibleWidth: CGFloat = 360
+
+    /// Scroll speed in points per second.
+    static var scrollSpeed: CGFloat {
+        get {
+            guard let value = defaults.object(forKey: speedKey) as? Double else {
+                return Constants.marqueeScrollSpeed
+            }
+            return CGFloat(value).clamped(minScrollSpeed, maxScrollSpeed)
+        }
+        set { defaults.set(Double(newValue.clamped(minScrollSpeed, maxScrollSpeed)), forKey: speedKey) }
+    }
+
+    /// Fixed width (points) of the status-item ticker window.
+    static var visibleWidth: CGFloat {
+        get {
+            guard let value = defaults.object(forKey: widthKey) as? Double else {
+                return Constants.marqueeVisibleWidth
+            }
+            return CGFloat(value).clamped(minVisibleWidth, maxVisibleWidth)
+        }
+        set { defaults.set(Double(newValue.clamped(minVisibleWidth, maxVisibleWidth)), forKey: widthKey) }
+    }
+}
+
+private extension CGFloat {
+    func clamped(_ lower: CGFloat, _ upper: CGFloat) -> CGFloat {
+        Swift.min(Swift.max(self, lower), upper)
+    }
+}

@@ -24,9 +24,12 @@ final class MarqueeController {
     private let scrollView = ScrollingTextView()
     private let font = NSFont.monospacedSystemFont(ofSize: Constants.menuBarFontSize, weight: .medium)
 
+    /// Current width of the ticker window; user-adjustable via the length slider.
+    private var visibleWidth: CGFloat = TickerSettings.visibleWidth
+
     init(statusItem: NSStatusItem) {
         self.statusItem = statusItem
-        statusItem.length = Constants.marqueeVisibleWidth
+        statusItem.length = visibleWidth
         setupScrollView(button: statusItem.button)
     }
 
@@ -34,7 +37,7 @@ final class MarqueeController {
         guard let button else { return }
         button.title = ""
         scrollView.frame = NSRect(x: 0, y: 0,
-                                  width: Constants.marqueeVisibleWidth,
+                                  width: visibleWidth,
                                   height: max(button.frame.height, 22))
         scrollView.autoresizingMask = [.width, .height]
         button.addSubview(scrollView)
@@ -54,11 +57,21 @@ final class MarqueeController {
             result.append(separator())
         }
 
+        let newWidth = result.size().width
+        // Keep the current scroll position when the tape's total width is
+        // unchanged (same symbols and formatting), so a background refresh
+        // doesn't snap the ticker back to the start. Reset only when the layout
+        // width actually changes.
+        let preserveOffset = fullStringWidth > 0 && abs(newWidth - fullStringWidth) < 0.5
+
         fullString = result
-        fullStringWidth = result.size().width
-        pixelOffset = 0
+        fullStringWidth = newWidth
+        if !preserveOffset || pixelOffset >= fullStringWidth {
+            pixelOffset = 0
+        }
 
         scrollView.set(result, scrolling: true)
+        scrollView.setOffset(pixelOffset)
         resume()
     }
 
@@ -82,7 +95,7 @@ final class MarqueeController {
         pause()
         // Nothing to scroll — stay static.
         guard fullString.length > 0,
-              fullStringWidth > Constants.marqueeVisibleWidth else { return }
+              fullStringWidth > visibleWidth else { return }
 
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
             self?.tick()
@@ -102,9 +115,28 @@ final class MarqueeController {
 
     private func tick() {
         guard fullStringWidth > 0 else { return }
-        pixelOffset += Constants.marqueeScrollSpeed / 60
+        pixelOffset += TickerSettings.scrollSpeed / 60
         if pixelOffset >= fullStringWidth { pixelOffset -= fullStringWidth }
         scrollView.setOffset(pixelOffset)
+    }
+
+    // MARK: - Live settings
+
+    /// Change how fast the ticker scrolls (points/second). Takes effect on the
+    /// next frame; persisted for the next launch.
+    func setScrollSpeed(_ speed: CGFloat) {
+        TickerSettings.scrollSpeed = speed
+    }
+
+    /// Resize the ticker window in the menu bar. Persisted for the next launch.
+    func setVisibleWidth(_ width: CGFloat) {
+        visibleWidth = width
+        TickerSettings.visibleWidth = width
+        statusItem?.length = width
+        scrollView.frame.size.width = width
+        scrollView.needsDisplay = true
+        // Re-evaluate whether scrolling is needed at the new width.
+        resume()
     }
 
     // MARK: - Segment building
