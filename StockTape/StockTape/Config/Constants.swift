@@ -90,8 +90,8 @@ enum Constants {
 // MARK: - User-tunable settings
 
 /// User-adjustable ticker settings, persisted in `UserDefaults`. Falls back to
-/// the `Constants` defaults on first launch. Read live every frame so slider
-/// changes take effect immediately.
+/// the `Constants` defaults on first launch. `MarqueeController` applies slider
+/// changes immediately.
 enum TickerSettings {
 
     private static let defaults = UserDefaults.standard
